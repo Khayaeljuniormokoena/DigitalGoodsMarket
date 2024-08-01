@@ -1,0 +1,21 @@
+body {
+    padding-top: 56px;
+  }
+  
+  .card-img-top {
+    height: 200px;
+    object-fit: cover;
+  }
+  
+  .navbar {
+    margin-bottom: 20px;
+  }
+  
+  .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+  }
+  
+  .alert {
+    margin-top: 20px;
+  }

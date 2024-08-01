@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ product.title }}</h1>
+  <p>{{ product.description }}</p>
+  <p>Price: ${{ product.price }}</p>
+  <p>Posted by: {{ product.author.username }} on {{ product.created_at }}</p>
+  <h3>Reviews</h3>
+  <div>
+    {% for review in reviews %}
+      <div class="card my-2">
+        <div class="card-body">
+          <h5 class="card-title">Rating: {{ review.rating }}</h5>
+          <p class="card-text">{{ review.comment }}</p>
+          <p class="text-muted">Reviewed by: {{ review.author.username }} on {{ review.created_at }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <h4>Add a Review</h4>
+  <form action="" method="post">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.rating.label }}
+      {{ form.rating(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.comment.label }}
+      {{ form.comment(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.submit(class="btn btn-primary") }}
+    </div>
+  </form>
+{% endblock %}
