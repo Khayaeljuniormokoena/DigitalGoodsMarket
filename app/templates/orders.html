@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>My Orders</h1>
+    <ul>
+        {% for order in orders %}
+            <li>
+                {{ order.product.title }} - Purchased on {{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

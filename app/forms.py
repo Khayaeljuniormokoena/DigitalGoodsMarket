@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, FloatField, FileField
-from wtforms.validators import DataRequired, ValidationError, Email, EqualTo
+from wtforms.validators import DataRequired, ValidationError, Email, EqualTo, Optional
 from wtforms.fields.simple import FileField
 from app.models import User
 
@@ -32,6 +32,7 @@ class ProductForm(FlaskForm):
     description = TextAreaField('Description', validators=[DataRequired()])
     price = FloatField('Price', validators=[DataRequired()])
     category = StringField('Category', validators=[DataRequired()])
+    image = FileField('Product Image')
     submit = SubmitField('Add Product')
 
 class EditProfileForm(FlaskForm):
@@ -44,3 +45,9 @@ class ReviewForm(FlaskForm):
     rating = StringField('Rating', validators=[DataRequired()])
     comment = TextAreaField('Comment')
     submit = SubmitField('Submit Review')
+
+class SearchForm(FlaskForm):
+    query = StringField('Search', validators=[Optional()])
+    min_price = FloatField('Min Price', validators=[Optional()])
+    max_price = FloatField('Max Price', validators=[Optional()])
+    submit = SubmitField('Search')

@@ -34,4 +34,17 @@
       {{ form.submit(class="btn btn-primary") }}
     </div>
   </form>
+  {% if current_user.is_authenticated %}
+    {% if product.author == current_user and not product.is_sold %}
+        <form action="{{ url_for('main.sell_product', id=product.id) }}" method="post">
+            <button class="btn btn-danger">Sell Product</button>
+        </form>
+    {% elif product.author != current_user and not product.is_sold %}
+        <form action="{{ url_for('main.buy_product', id=product.id) }}" method="post">
+            <button class="btn btn-success">Buy Product</button>
+        </form>
+    {% else %}
+        <p>This product has been sold.</p>
+    {% endif %}
+{% endif %}
 {% endblock %}

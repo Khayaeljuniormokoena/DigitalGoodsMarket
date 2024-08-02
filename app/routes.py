@@ -1,10 +1,15 @@
-from flask import Blueprint, render_template, flash, redirect, url_for, request
+from email.mime import image
+from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
 from app import db
-from app.models import User, Product, Review, Category
-from app.forms import LoginForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm
+from app.models import Order, User, Product, Review, Category
+from app.forms import LoginForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
 from werkzeug.utils import secure_filename
 import os
+
+# Function to check allowed file extensions
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 bp = Blueprint('main', __name__)
 
@@ -69,7 +74,14 @@ def add_product():
         if category is None:
             category = Category(name=form.category.data)
             db.session.add(category)
-        product = Product(title=form.title.data, description=form.description.data, price=form.price.data, category=category, author=current_user)
+        
+        if form.image.data:
+            filename = image.save(form.image.data)
+        else:
+            filename = 'default-product.jpg'
+
+        product = Product(title=form.title.data, description=form.description.data, price=form.price.data,
+                          category=category, author=current_user, image=filename)
         db.session.add(product)
         db.session.commit()
         flash('Your product is now live!')
@@ -95,8 +107,55 @@ def edit_profile():
         form.email.data = current_user.email
     return render_template('edit_profile.html', title='Edit Profile', form=form)
 
-@bp.route('/search', methods=['GET'])
+@bp.route('/search', methods=['GET', 'POST'])
 def search():
-    query = request.args.get('query')
-    products = Product.query.filter(Product.title.contains(query)).all()
-    return render_template('search_results.html', products=products, query=query)
+    form = SearchForm()
+    query = form.query.data
+    min_price = form.min_price.data
+    max_price = form.max_price.data
+
+    products_query = Product.query
+
+    if query:
+        products_query = products_query.filter(Product.title.ilike(f'%{query}%'))
+
+    if min_price is not None:
+        products_query = products_query.filter(Product.price >= min_price)
+        
+    if max_price is not None:
+        products_query = products_query.filter(Product.price <= max_price)
+
+    products = products_query.all()
+    return render_template('search.html', products=products, form=form)
+
+@bp.route('/buy_product/<int:id>', methods=['POST'])
+@login_required
+def buy_product(id):
+    product = Product.query.get_or_404(id)
+    if product.author == current_user or product.is_sold:
+        flash('You cannot buy this product.')
+        return redirect(url_for('main.index'))
+    
+    product.is_sold = True
+    db.session.commit()
+    flash('You have successfully bought the product!')
+    return redirect(url_for('main.product', id=product.id))
+
+@bp.route('/sell_product/<int:id>', methods=['POST'])
+@login_required
+def sell_product(id):
+    product = Product.query.get_or_404(id)
+    if product.author != current_user or product.is_sold:
+        flash('You cannot sell this product.')
+        return redirect(url_for('main.index'))
+    
+    product.is_sold = True
+    db.session.commit()
+    flash('Your product has been sold!')
+    return redirect(url_for('main.index'))
+
+@bp.route('/orders')
+@login_required
+def orders():
+    orders = Order.query.filter_by(user_id=current_user.id).all()
+    return render_template('orders.html', orders=orders)
