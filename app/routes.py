@@ -2,8 +2,9 @@ from email.mime import image
 from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
 from app import db
-from app.models import Order, User, Product, Review, Category
-from app.forms import LoginForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
+from app.Decorator import admin_required
+from app.models import Message, Order, ProductImage, User, Product, Review, Category, Wishlist
+from app.forms import LoginForm, MessageForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
 from werkzeug.utils import secure_filename
 import os
 
@@ -74,15 +75,24 @@ def add_product():
         if category is None:
             category = Category(name=form.category.data)
             db.session.add(category)
-        
-        if form.image.data:
-            filename = image.save(form.image.data)
-        else:
-            filename = 'default-product.jpg'
 
-        product = Product(title=form.title.data, description=form.description.data, price=form.price.data,
-                          category=category, author=current_user, image=filename)
+        product = Product(
+            title=form.title.data,
+            description=form.description.data,
+            price=form.price.data,
+            category=category,
+            author=current_user,
+        )
         db.session.add(product)
+        db.session.flush()  # Ensure the product ID is available before saving images
+
+        for image in form.images.data:
+            if image and allowed_file(image.filename):
+                filename = secure_filename(image.filename)
+                image.save(os.path.join('app/static/images/', filename))
+                product_image = ProductImage(product_id=product.id, image_filename=filename)
+                db.session.add(product_image)
+
         db.session.commit()
         flash('Your product is now live!')
         return redirect(url_for('main.index'))
@@ -159,3 +169,59 @@ def sell_product(id):
 def orders():
     orders = Order.query.filter_by(user_id=current_user.id).all()
     return render_template('orders.html', orders=orders)
+
+@bp.route('/send_message', methods=['GET', 'POST'])
+@login_required
+def send_message():
+    form = MessageForm()
+    if form.validate_on_submit():
+        recipient = User.query.filter_by(username=form.recipient.data).first()
+        if recipient is None:
+            flash('User not found.')
+            return redirect(url_for('main.send_message'))
+
+        message = Message(
+            sender_id=current_user.id,
+            receiver_id=recipient.id,
+            body=form.body.data
+        )
+        db.session.add(message)
+        db.session.commit()
+        flash('Your message has been sent.')
+        return redirect(url_for('main.index'))
+    return render_template('send_message.html', title='Send Message', form=form)
+
+@bp.route('/inbox')
+@login_required
+def inbox():
+    messages = current_user.received_messages.order_by(Message.timestamp.desc()).all()
+    return render_template('inbox.html', title='Inbox', messages=messages)
+
+@bp.route('/add_to_wishlist/<int:product_id>', methods=['POST'])
+@login_required
+def add_to_wishlist(product_id):
+    product = Product.query.get_or_404(product_id)
+    if product in current_user.wishlist_items:
+        flash('Product is already in your wishlist.')
+        return redirect(url_for('main.product', id=product_id))
+
+    wishlist_item = Wishlist(user_id=current_user.id, product_id=product.id)
+    db.session.add(wishlist_item)
+    db.session.commit()
+    flash('Product added to your wishlist.')
+    return redirect(url_for('main.product', id=product_id))
+
+@bp.route('/wishlist')
+@login_required
+def wishlist():
+    wishlist_items = current_user.wishlist_items.all()
+    return render_template('wishlist.html', title='Wishlist', wishlist_items=wishlist_items)
+
+@bp.route('/admin_dashboard')
+@login_required
+@admin_required
+def admin_dashboard():
+    users = User.query.all()
+    products = Product.query.all()
+    categories = Category.query.all()
+    return render_template('admin_dashboard.html', title='Admin Dashboard', users=users, products=products, categories=categories)

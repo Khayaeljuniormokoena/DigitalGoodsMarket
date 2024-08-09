@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     profile_pic = db.Column(db.String(128), default='default.jpg')
     products = db.relationship('Product', backref='author', lazy='dynamic')
     reviews = db.relationship('Review', backref='author', lazy='dynamic')
+    admin_profile = db.relationship('Admin', uselist=False, backref='user')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -48,11 +49,6 @@ class Review(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
 
-class Wishlist(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
-
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
@@ -60,3 +56,34 @@ class Order(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     product = db.relationship('Product', backref='orders')
     user = db.relationship('User', backref='orders')
+
+class ProductImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
+    image_filename = db.Column(db.String(128))
+
+    product = db.relationship('Product', backref='images')
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    body = db.Column(db.String(1024))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    read = db.Column(db.Boolean, default=False)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
+
+class Wishlist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
+
+    user = db.relationship('User', backref='wishlist_items')
+    product = db.relationship('Product', backref='wishlist_entries')
+
+class Admin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    is_superadmin = db.Column(db.Boolean, default=False)
