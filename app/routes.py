@@ -1,19 +1,26 @@
-from email.mime import image
+
 from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
-from app import db
-from app.Decorator import admin_required
-from app.models import Message, Order, ProductImage, User, Product, Review, Category, Wishlist
-from app.forms import LoginForm, MessageForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
+
 from werkzeug.utils import secure_filename
 import os
+from app import db
+from app.models import Product, Wishlist, User, Review, Category, ProductImage, Order, Message
+from app.forms import LoginForm, MessageForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
+from app.Decorator import admin_required
+from config import allowed_file
 
-# Function to check allowed file extensions
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
-
+# Blueprint setup
 bp = Blueprint('main', __name__)
 
+# Function to save profile picture
+def save_profile_picture(form_picture):
+    picture_fn = secure_filename(form_picture.filename)
+    picture_path = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], picture_fn)
+    form_picture.save(picture_path)
+    return picture_fn
+
+# Routes
 @bp.route('/')
 @bp.route('/index')
 def index():
@@ -52,6 +59,24 @@ def register():
         flash('Congratulations, you are now a registered user!')
         return redirect(url_for('main.login'))
     return render_template('register.html', title='Register', form=form)
+
+@bp.route('/edit_profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    form = EditProfileForm()
+    if form.validate_on_submit():
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        if form.profile_pic.data:
+            pic_filename = save_profile_picture(form.profile_pic.data)
+            current_user.profile_pic = pic_filename
+        db.session.commit()
+        flash('Your changes have been saved.')
+        return redirect(url_for('main.edit_profile'))
+    elif request.method == 'GET':
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+    return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 @bp.route('/product/<int:id>', methods=['GET', 'POST'])
 def product(id):
@@ -98,24 +123,7 @@ def add_product():
         return redirect(url_for('main.index'))
     return render_template('add_product.html', title='Add Product', form=form)
 
-@bp.route('/edit_profile', methods=['GET', 'POST'])
-@login_required
-def edit_profile():
-    form = EditProfileForm()
-    if form.validate_on_submit():
-        current_user.username = form.username.data
-        current_user.email = form.email.data
-        if form.profile_pic.data:
-            pic_filename = secure_filename(form.profile_pic.data.filename)
-            form.profile_pic.data.save(os.path.join('app/static/images/', pic_filename))
-            current_user.profile_pic = pic_filename
-        db.session.commit()
-        flash('Your changes have been saved.')
-        return redirect(url_for('main.edit_profile'))
-    elif request.method == 'GET':
-        form.username.data = current_user.username
-        form.email.data = current_user.email
-    return render_template('edit_profile.html', title='Edit Profile', form=form)
+
 
 @bp.route('/search', methods=['GET', 'POST'])
 def search():
@@ -201,21 +209,20 @@ def inbox():
 @login_required
 def add_to_wishlist(product_id):
     product = Product.query.get_or_404(product_id)
-    if product in current_user.wishlist_items:
-        flash('Product is already in your wishlist.')
-        return redirect(url_for('main.product', id=product_id))
-
-    wishlist_item = Wishlist(user_id=current_user.id, product_id=product.id)
-    db.session.add(wishlist_item)
-    db.session.commit()
-    flash('Product added to your wishlist.')
-    return redirect(url_for('main.product', id=product_id))
+    if product.owner_id != current_user.id:
+        new_wishlist_item = Wishlist(user_id=current_user.id, product_id=product.id)
+        db.session.add(new_wishlist_item)
+        db.session.commit()
+        flash('Product added to wishlist!', 'success')
+    else:
+        flash('You cannot add your own product to your wishlist.', 'danger')
+    return redirect(url_for('product_details', product_id=product_id))
 
 @bp.route('/wishlist')
 @login_required
 def wishlist():
-    wishlist_items = current_user.wishlist_items.all()
-    return render_template('wishlist.html', title='Wishlist', wishlist_items=wishlist_items)
+    wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
+    return render_template('wishlist.html', wishlist_items=wishlist_items)
 
 @bp.route('/admin_dashboard')
 @login_required
@@ -225,3 +232,25 @@ def admin_dashboard():
     products = Product.query.all()
     categories = Category.query.all()
     return render_template('admin_dashboard.html', title='Admin Dashboard', users=users, products=products, categories=categories)
+
+@bp.route('/remove_from_wishlist/<int:wishlist_id>', methods=['POST'])
+@login_required
+def remove_from_wishlist(wishlist_id):
+    wishlist_item = Wishlist.query.get_or_404(wishlist_id)
+    db.session.delete(wishlist_item)
+    db.session.commit()
+    flash('Product removed from wishlist!', 'success')
+    return redirect(url_for('wishlist'))
+
+@bp.route('/purchase_product/<int:product_id>', methods=['POST'])
+@login_required
+def purchase_product(product_id):
+    product = Product.query.get_or_404(product_id)
+    if product in [item.product for item in current_user.wishlist]:
+        wishlist_item = Wishlist.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+        db.session.delete(wishlist_item)
+        db.session.commit()
+    product.owner_id = current_user.id
+    db.session.commit()
+    flash('Product purchased successfully!', 'success')
+    return redirect(url_for('dashboard'))

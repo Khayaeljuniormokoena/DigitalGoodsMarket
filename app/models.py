@@ -4,7 +4,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy()
+
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,7 +83,7 @@ class Wishlist(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
 
-    user = db.relationship('User', backref='wishlist_items')
+
     product = db.relationship('Product', backref='wishlist_entries')
 
 class Admin(db.Model):
