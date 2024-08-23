@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 
+{% block title %}My Orders{% endblock %}
+
 {% block content %}
-    <h1>My Orders</h1>
-    <ul>
-        {% for order in orders %}
-            <li>
-                {{ order.product.title }} - Purchased on {{ order.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-            </li>
-        {% endfor %}
-    </ul>
+  <h1>My Orders</h1>
+  <div class="row">
+    {% for order in orders %}
+    <div class="col-md-4 mb-4">
+      <div class="card">
+        <img src="{{ url_for('static', filename='images/' + order.product.image) }}" class="card-img-top" alt="Product Image">
+        <div class="card-body">
+          <h5 class="card-title">{{ order.product.title }}</h5>
+          <p class="card-text">Price: ${{ order.product.price }}</p>
+          <p class="card-text">Ordered on: {{ order.created_at.strftime('%Y-%m-%d') }}</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
 {% endblock %}
