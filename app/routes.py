@@ -20,11 +20,13 @@ def save_profile_picture(form_picture):
     form_picture.save(picture_path)
     return picture_fn
 
+
 # Routes
 @bp.route('/')
 @bp.route('/index')
 def index():
     products = Product.query.order_by(Product.created_at.desc()).paginate(per_page=10)
+    print(products)
     return render_template('home.html', products=products)
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -209,14 +211,14 @@ def inbox():
 @login_required
 def add_to_wishlist(product_id):
     product = Product.query.get_or_404(product_id)
-    if product.owner_id != current_user.id:
+    if product.user_id != current_user.id:
         new_wishlist_item = Wishlist(user_id=current_user.id, product_id=product.id)
         db.session.add(new_wishlist_item)
         db.session.commit()
         flash('Product added to wishlist!', 'success')
     else:
         flash('You cannot add your own product to your wishlist.', 'danger')
-    return redirect(url_for('product_details', product_id=product_id))
+    return redirect(url_for('main.product', id=product_id))
 
 @bp.route('/wishlist')
 @login_required
