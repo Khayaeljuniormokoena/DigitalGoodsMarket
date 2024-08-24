@@ -91,3 +91,16 @@ class Admin(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     is_superadmin = db.Column(db.Boolean, default=False)
 
+class Cart(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', backref='cart')
+
+class CartItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer, db.ForeignKey('cart.id'))
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
+    quantity = db.Column(db.Integer, default=1)
+    cart = db.relationship('Cart', backref='items')
+    product = db.relationship('Product', backref='cart_items')

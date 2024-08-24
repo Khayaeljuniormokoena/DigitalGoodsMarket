@@ -3,7 +3,10 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-  <h1 class="my-4">Products</h1>
+  <h1 class="my-4">Products 
+    <!-- Add this where you want to show the cart item count -->
+    <span class="badge bg-primary">{{ cart_item_count }}</span>
+  </h1>
   <div class="row">
     {% for product in products.items %}
     <div class="col-md-4 mb-4">

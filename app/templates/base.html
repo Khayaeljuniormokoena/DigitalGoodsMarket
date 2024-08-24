@@ -35,6 +35,9 @@
         </li>
         {% endif %}
         <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('main.cart') }}">Cart</a>
+        </li>
+        <li class="nav-item">
           <form class="d-flex ms-auto" action="{{ url_for('main.search') }}" method="get">
             <input class="form-control me-2" type="search" name="query" placeholder="Search products" aria-label="Search">
             <button class="btn btn-outline-success" type="submit">Search</button>

@@ -5,7 +5,7 @@ from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.utils import secure_filename
 import os
 from app import db
-from app.models import Product, Wishlist, User, Review, Category, ProductImage, Order, Message
+from app.models import Cart, CartItem, Product, Wishlist, User, Review, Category, ProductImage, Order, Message
 from app.forms import LoginForm, MessageForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
 from app.Decorator import admin_required
 from config import allowed_file
@@ -24,10 +24,12 @@ def save_profile_picture(form_picture):
 # Routes
 @bp.route('/')
 @bp.route('/index')
+@login_required
 def index():
     products = Product.query.order_by(Product.created_at.desc()).paginate(per_page=10)
-    print(products)
-    return render_template('home.html', products=products)
+    cart = Cart.query.filter_by(user_id=current_user.id).first()
+    cart_item_count = len(CartItem.query.filter_by(cart_id=cart.id).all()) if cart else 0
+    return render_template('home.html', products=products, cart_item_count=cart_item_count)
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -52,14 +54,24 @@ def logout():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
+    
     form = RegistrationForm()
     if form.validate_on_submit():
         user = User(username=form.username.data, email=form.email.data)
         user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash('Congratulations, you are now a registered user!')
-        return redirect(url_for('main.login'))
+        
+        print(f"Registering user: {user.username}, {user.email}")
+        
+        try:
+            db.session.add(user)
+            db.session.commit()
+            flash('Congratulations, you are now a registered user!')
+            return redirect(url_for('main.login'))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            flash('An error occurred. Please try again.')
+    
     return render_template('register.html', title='Register', form=form)
 
 @bp.route('/edit_profile', methods=['GET', 'POST'])
@@ -256,3 +268,66 @@ def purchase_product(product_id):
     db.session.commit()
     flash('Product purchased successfully!', 'success')
     return redirect(url_for('dashboard'))
+
+@bp.route('/add_to_cart/<int:product_id>', methods=['POST'])
+@login_required
+def add_to_cart(product_id):
+    product = Product.query.get_or_404(product_id)
+    cart = Cart.query.filter_by(user_id=current_user.id).first()
+    
+    if not cart:
+        cart = Cart(user_id=current_user.id)
+        db.session.add(cart)
+        db.session.commit()
+
+    cart_item = CartItem.query.filter_by(cart_id=cart.id, product_id=product.id).first()
+    if cart_item:
+        cart_item.quantity += 1
+    else:
+        cart_item = CartItem(cart_id=cart.id, product_id=product.id)
+        db.session.add(cart_item)
+
+    db.session.commit()
+    flash('Product added to cart!', 'success')
+    return redirect(url_for('main.index'))
+
+@bp.route('/cart')
+@login_required
+def cart():
+    cart = Cart.query.filter_by(user_id=current_user.id).first()
+    if cart:
+        items = CartItem.query.filter_by(cart_id=cart.id).all()
+    else:
+        items = []
+
+    print(f"Cart Items: {items}") 
+    return render_template('cart.html', cart=cart, items=items)
+
+@bp.route('/checkout', methods=['POST'])
+@login_required
+def checkout():
+    cart = Cart.query.filter_by(user_id=current_user.id).first()
+    if not cart:
+        flash('Your cart is empty.', 'danger')
+        return redirect(url_for('main.cart'))
+
+    for item in cart.items:
+        product = Product.query.get_or_404(item.product_id)
+        if not product.is_sold:
+            product.is_sold = True
+            order = Order(product_id=product.id, user_id=current_user.id)
+            db.session.add(order)
+    
+    db.session.delete(cart)
+    db.session.commit()
+    flash('Checkout successful!', 'success')
+    return redirect(url_for('main.index'))
+
+@bp.route('/remove_from_cart/<int:item_id>', methods=['POST'])
+@login_required
+def remove_from_cart(item_id):
+    cart_item = CartItem.query.get_or_404(item_id)
+    db.session.delete(cart_item)
+    db.session.commit()
+    flash('Item removed from cart!', 'success')
+    return redirect(url_for('main.cart'))
