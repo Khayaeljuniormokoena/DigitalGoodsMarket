@@ -15,13 +15,22 @@ class User(UserMixin, db.Model):
     products = db.relationship('Product', backref='author', lazy='dynamic')
     reviews = db.relationship('Review', backref='author', lazy='dynamic')
     admin_profile = db.relationship('Admin', uselist=False, backref='user')
-    wishlist = db.relationship('Wishlist', backref='user', lazy=True)
+    wishlist_entries = db.relationship('Wishlist', backref='user', lazy=True)
+    received_messages = db.relationship('Message', foreign_keys='Message.receiver_id', backref='received_messages')
+    sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sent_messages')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+    @property
+    def product_stats(self):
+        total = self.products.count()
+        sold = self.products.filter_by(is_sold=True).count()
+        available = total - sold
+        return {'total': total, 'sold': sold, 'available': available}
 
 @login.user_loader
 def load_user(id):
@@ -75,8 +84,7 @@ class Message(db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     read = db.Column(db.Boolean, default=False)
 
-    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
-    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_messages')
+    
 
 class Wishlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)

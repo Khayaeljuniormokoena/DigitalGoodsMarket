@@ -1,5 +1,5 @@
 
-from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app
+from flask import Blueprint, abort, render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
 
 from werkzeug.utils import secure_filename
@@ -29,8 +29,22 @@ def index():
     products = Product.query.order_by(Product.created_at.desc()).paginate(per_page=10)
     cart = Cart.query.filter_by(user_id=current_user.id).first()
     cart_item_count = len(CartItem.query.filter_by(cart_id=cart.id).all()) if cart else 0
-    return render_template('home.html', products=products, cart_item_count=cart_item_count)
+    
+    wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
+        # Calculate unread messages count
+    unread_count = Message.query.filter_by(receiver_id=current_user.id, read=False).count()
+    
+    
+    return render_template('home.html', products=products, cart_item_count=cart_item_count, wishlist_items=wishlist_items, unread_count=unread_count)
 
+@bp.before_request
+def before_request():
+    if current_user.is_authenticated:
+        # Calculate unread messages count
+        unread_count = Message.query.filter_by(receiver_id=current_user.id, read=False).count()
+        # Make it available to all templates
+        current_app.jinja_env.globals['unread_count'] = unread_count
+        
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -102,8 +116,11 @@ def product(id):
         db.session.commit()
         flash('Your review has been posted!')
         return redirect(url_for('main.product', id=product.id))
+    
+    is_uploader = product.author == current_user
     reviews = Review.query.filter_by(product_id=id).all()
-    return render_template('product.html', product=product, form=form, reviews=reviews)
+    return render_template('product.html', product=product, form=form, reviews=reviews, is_uploader=is_uploader)
+
 
 @bp.route('/add_product', methods=['GET', 'POST'])
 @login_required
@@ -216,20 +233,28 @@ def send_message():
 @bp.route('/inbox')
 @login_required
 def inbox():
-    messages = current_user.received_messages.order_by(Message.timestamp.desc()).all()
+    # Query messages directly from the Message model
+    messages = Message.query.filter_by(receiver_id=current_user.id).order_by(Message.timestamp.desc()).all()
     return render_template('inbox.html', title='Inbox', messages=messages)
 
 @bp.route('/add_to_wishlist/<int:product_id>', methods=['POST'])
 @login_required
 def add_to_wishlist(product_id):
     product = Product.query.get_or_404(product_id)
-    if product.user_id != current_user.id:
+    
+    if product.user_id == current_user.id:
+        flash('You cannot add your own product to your wishlist.', 'danger')
+        return redirect(url_for('main.product', id=product_id))
+    
+    existing_wishlist_item = Wishlist.query.filter_by(user_id=current_user.id, product_id=product.id).first()
+    if existing_wishlist_item:
+        flash('Product is already in your wishlist.', 'info')
+    else:
         new_wishlist_item = Wishlist(user_id=current_user.id, product_id=product.id)
         db.session.add(new_wishlist_item)
         db.session.commit()
         flash('Product added to wishlist!', 'success')
-    else:
-        flash('You cannot add your own product to your wishlist.', 'danger')
+    
     return redirect(url_for('main.product', id=product_id))
 
 @bp.route('/wishlist')
@@ -251,10 +276,14 @@ def admin_dashboard():
 @login_required
 def remove_from_wishlist(wishlist_id):
     wishlist_item = Wishlist.query.get_or_404(wishlist_id)
+    
+    if wishlist_item.user_id != current_user.id:
+        abort(403)
+    
     db.session.delete(wishlist_item)
     db.session.commit()
     flash('Product removed from wishlist!', 'success')
-    return redirect(url_for('wishlist'))
+    return redirect(url_for('main.wishlist'))
 
 @bp.route('/purchase_product/<int:product_id>', methods=['POST'])
 @login_required
@@ -327,7 +356,27 @@ def checkout():
 @login_required
 def remove_from_cart(item_id):
     cart_item = CartItem.query.get_or_404(item_id)
+    
+    if cart_item.cart.user_id != current_user.id:
+        abort(403)
+    
     db.session.delete(cart_item)
     db.session.commit()
-    flash('Item removed from cart!', 'success')
+    flash('Product removed from cart!', 'success')
     return redirect(url_for('main.cart'))
+
+@bp.route('/user_profile')
+@login_required
+def user_profile():
+    stats = current_user.product_stats
+    return render_template('user_profile.html', stats=stats)
+
+@bp.route('/remove_product/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def remove_product(id):
+    product = Product.query.get_or_404(id)
+    db.session.delete(product)
+    db.session.commit()
+    flash('Product has been removed!', 'success')
+    return redirect(url_for('main.index'))

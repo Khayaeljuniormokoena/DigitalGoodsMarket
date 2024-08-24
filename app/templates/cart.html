@@ -1,21 +1,28 @@
 {% extends "base.html" %}
+
 {% block content %}
-    <h1>Your Cart</h1>
+<div class="container">
+    <h1 class="my-4">Your Cart</h1>
     {% if items %}
-        <ul>
+    <div class="list-group">
         {% for item in items %}
-            <li>
-                {{ item.product.title }} - {{ item.quantity }} x {{ item.product.price }} 
-                <form action="{{ url_for('main.remove_from_cart', item_id=item.id) }}" method="post">
-                    <button type="submit">Remove</button>
-                </form>
-            </li>
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1">{{ item.product.title }}</h5>
+                <p class="mb-1">Quantity: {{ item.quantity }}</p>
+                <p class="mb-1">Price: ${{ item.product.price }}</p>
+            </div>
+            <form action="{{ url_for('main.remove_from_cart', item_id=item.id) }}" method="post" class="ml-2">
+                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+        </div>
         {% endfor %}
-        </ul>
-        <form action="{{ url_for('main.checkout') }}" method="post">
-            <button type="submit">Checkout</button>
-        </form>
+    </div>
+    <form action="{{ url_for('main.checkout') }}" method="post" class="mt-4">
+        <button type="submit" class="btn btn-primary btn-lg">Checkout</button>
+    </form>
     {% else %}
-        <p>Your cart is empty.</p>
+    <p>Your cart is empty.</p>
     {% endif %}
+</div>
 {% endblock %}
