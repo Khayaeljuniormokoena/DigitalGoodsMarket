@@ -216,7 +216,7 @@ def send_message():
     if form.validate_on_submit():
         recipient = User.query.filter_by(username=form.recipient.data).first()
         if recipient is None:
-            flash('User not found.')
+            flash('User not found.', 'danger')
             return redirect(url_for('main.send_message'))
 
         message = Message(
@@ -226,16 +226,41 @@ def send_message():
         )
         db.session.add(message)
         db.session.commit()
-        flash('Your message has been sent.')
-        return redirect(url_for('main.index'))
+        flash('Your message has been sent.', 'success')
+        return redirect(url_for('main.inbox'))
     return render_template('send_message.html', title='Send Message', form=form)
 
-@bp.route('/inbox')
+@bp.route('/inbox', methods=['GET', 'POST'])
 @login_required
 def inbox():
-    # Query messages directly from the Message model
     messages = Message.query.filter_by(receiver_id=current_user.id).order_by(Message.timestamp.desc()).all()
-    return render_template('inbox.html', title='Inbox', messages=messages)
+    form = MessageForm()
+
+    if form.validate_on_submit():
+        recipient = User.query.filter_by(username=form.recipient.data).first()
+        if recipient is None:
+            flash('User not found.', 'danger')
+            return redirect(url_for('main.inbox'))
+
+        message = Message(
+            sender_id=current_user.id,
+            receiver_id=recipient.id,
+            body=form.body.data
+        )
+        db.session.add(message)
+        db.session.commit()
+        flash('Your reply has been sent.', 'success')
+        return redirect(url_for('main.inbox'))
+
+    # Mark all messages as read
+    for message in messages:
+        if not message.read:
+            message.read = True
+            db.session.commit()
+
+    return render_template('inbox.html', title='Inbox', messages=messages, form=form)
+
+
 
 @bp.route('/add_to_wishlist/<int:product_id>', methods=['POST'])
 @login_required

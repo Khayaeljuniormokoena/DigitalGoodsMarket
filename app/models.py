@@ -16,8 +16,8 @@ class User(UserMixin, db.Model):
     reviews = db.relationship('Review', backref='author', lazy='dynamic')
     admin_profile = db.relationship('Admin', uselist=False, backref='user')
     wishlist_entries = db.relationship('Wishlist', backref='user', lazy=True)
-    received_messages = db.relationship('Message', foreign_keys='Message.receiver_id', backref='received_messages')
-    sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sent_messages')
+    received_messages = db.relationship('Message', foreign_keys='Message.receiver_id', backref='receiver', overlaps="sent_messages,received_messages")
+    sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender', overlaps="received_messages,sent_messages")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -31,6 +31,14 @@ class User(UserMixin, db.Model):
         sold = self.products.filter_by(is_sold=True).count()
         available = total - sold
         return {'total': total, 'sold': sold, 'available': available}
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    body = db.Column(db.String(1024))
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    read = db.Column(db.Boolean, default=False)
 
 @login.user_loader
 def load_user(id):
@@ -76,15 +84,9 @@ class ProductImage(db.Model):
 
     product = db.relationship('Product', backref='images')
 
-class Message(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    body = db.Column(db.String(1024))
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-    read = db.Column(db.Boolean, default=False)
 
-    
+
+
 
 class Wishlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)

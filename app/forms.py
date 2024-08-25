@@ -53,6 +53,6 @@ class SearchForm(FlaskForm):
     submit = SubmitField('Search')
 
 class MessageForm(FlaskForm):
-    recipient = StringField('To', validators=[DataRequired()])
+    recipient = StringField('Recipient', validators=[DataRequired()])
     body = TextAreaField('Message', validators=[DataRequired()])
     submit = SubmitField('Send')
