@@ -28,10 +28,12 @@ def save_profile_picture(form_picture):
 @login_required
 def index():
     products = Product.query.order_by(Product.created_at.desc()).paginate(per_page=10)
+    print(f"Products: {products.items}")  # Debug statement
     cart = Cart.query.filter_by(user_id=current_user.id).first()
     cart_item_count = len(CartItem.query.filter_by(cart_id=cart.id).all()) if cart else 0
     
     wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
+    print(f"Wishlist Items: {wishlist_items}")  # Debug statement
         # Calculate unread messages count
     unread_count = Message.query.filter_by(receiver_id=current_user.id, read=False).count()
     
@@ -122,7 +124,6 @@ def product(id):
     reviews = Review.query.filter_by(product_id=id).all()
     return render_template('product.html', product=product, form=form, reviews=reviews, is_uploader=is_uploader)
 
-
 @bp.route('/add_product', methods=['GET', 'POST'])
 @login_required
 def add_product():
@@ -152,12 +153,13 @@ def add_product():
             product.file_path = file_filename
 
         # Save images if uploaded
-        for image in form.images.data:
-            if image and allowed_file(image.filename):
-                filename = secure_filename(image.filename)
-                image.save(os.path.join('app/static/images/', filename))
-                product_image = ProductImage(product_id=product.id, image_filename=filename)
-                db.session.add(product_image)
+        if form.images.data:
+            for image in form.images.data:
+                if image and hasattr(image, 'filename') and allowed_file(image.filename):
+                    filename = secure_filename(image.filename)
+                    image.save(os.path.join('app/static/images/', filename))
+                    product_image = ProductImage(product_id=product.id, image_filename=filename)
+                    db.session.add(product_image)
 
         db.session.commit()
         flash('Your product is now live!')

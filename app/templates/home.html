@@ -39,12 +39,16 @@
   <h2>My Wishlist</h2>
   <ul>
     {% for item in wishlist_items %}
-      <li>
-        <a href="{{ url_for('main.product', id=item.product.id) }}">{{ item.product.title }}</a>
-        <form action="{{ url_for('main.remove_from_wishlist', wishlist_id=item.id) }}" method="post" style="display:inline;">
-          <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-        </form>
-      </li>
+      {% if item.product %}
+        <li>
+          <a href="{{ url_for('main.product', id=item.product.id) }}">{{ item.product.title }}</a>
+          <form action="{{ url_for('main.remove_from_wishlist', wishlist_id=item.id) }}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+          </form>
+        </li>
+      {% else %}
+        <li>Product not found</li>
+      {% endif %}
     {% endfor %}
   </ul>
 
