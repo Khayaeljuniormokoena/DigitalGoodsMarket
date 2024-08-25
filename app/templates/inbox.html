@@ -8,6 +8,30 @@
     <div class="message-item {% if not message.read %}unread{% endif %}">
         <p><strong>From:</strong> {{ message.sender.username }} <span class="timestamp">{{ message.timestamp }}</span></p>
         <p>{{ message.body }}</p>
+        {% if message.sender.id == current_user.id %}
+        <div class="message-actions">
+            <!-- Edit Message Form -->
+            <form method="POST" action="{{ url_for('main.edit_message', message_id=message.id) }}">
+                <input type="hidden" name="_method" value="PUT">
+                <div class="form-group">
+                    <textarea name="body" class="form-control" rows="3">{{ message.body }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-warning">Edit</button>
+                {% if message.edited %}
+                <span class="text-muted">(Edited)</span>
+                {% endif %}
+            </form>
+            <!-- Delete Message Form -->
+            <form method="POST" action="{{ url_for('main.delete_message', message_id=message.id) }}" style="display:inline;">
+                <input type="hidden" name="_method" value="DELETE">
+                <button type="submit" class="btn btn-danger">Delete</button>
+                <select name="delete_option" class="form-control">
+                    <option value="user">Delete for me</option>
+                    <option value="everyone">Delete for everyone</option>
+                </select>
+            </form>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>

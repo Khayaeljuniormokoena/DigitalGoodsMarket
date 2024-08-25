@@ -39,6 +39,10 @@ class Message(db.Model):
     body = db.Column(db.String(1024))
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     read = db.Column(db.Boolean, default=False)
+    edited = db.Column(db.Boolean, default=False)
+    edit_timestamp = db.Column(db.DateTime, nullable=True)
+    deleted_for_sender = db.Column(db.Boolean, default=False)
+    deleted_for_receiver = db.Column(db.Boolean, default=False)
 
 @login.user_loader
 def load_user(id):

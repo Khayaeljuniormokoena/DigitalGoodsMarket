@@ -1,4 +1,5 @@
 
+from datetime import datetime, timedelta
 from flask import Blueprint, abort, render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
 
@@ -233,7 +234,11 @@ def send_message():
 @bp.route('/inbox', methods=['GET', 'POST'])
 @login_required
 def inbox():
-    messages = Message.query.filter_by(receiver_id=current_user.id).order_by(Message.timestamp.desc()).all()
+    messages = Message.query.filter(
+        (Message.receiver_id == current_user.id) & (Message.deleted_for_receiver == False) |
+        (Message.sender_id == current_user.id) & (Message.deleted_for_sender == False)
+    ).order_by(Message.timestamp.asc()).all()
+
     form = MessageForm()
 
     if form.validate_on_submit():
@@ -254,7 +259,7 @@ def inbox():
 
     # Mark all messages as read
     for message in messages:
-        if not message.read:
+        if not message.read and message.receiver_id == current_user.id:
             message.read = True
             db.session.commit()
 
@@ -405,3 +410,38 @@ def remove_product(id):
     db.session.commit()
     flash('Product has been removed!', 'success')
     return redirect(url_for('main.index'))
+
+@bp.route('/edit_message/<int:message_id>', methods=['PUT'])
+@login_required
+def edit_message(message_id):
+    message = Message.query.get_or_404(message_id)
+    if message.sender_id != current_user.id:
+        abort(403)
+    if datetime.utcnow() - message.timestamp > timedelta(minutes=5):
+        flash('You can only edit messages within 5 minutes of sending them.', 'danger')
+        return redirect(url_for('main.inbox'))
+
+    form = MessageForm()
+    if form.validate_on_submit():
+        message.body = form.body.data
+        message.edited = True
+        db.session.commit()
+        flash('Message updated successfully!', 'success')
+    return redirect(url_for('main.inbox'))
+
+@bp.route('/delete_message/<int:message_id>', methods=['DELETE'])
+@login_required
+def delete_message(message_id):
+    message = Message.query.get_or_404(message_id)
+    if message.sender_id != current_user.id:
+        abort(403)
+
+    delete_option = request.form.get('delete_option')
+    if delete_option == 'everyone':
+        db.session.delete(message)
+    else:
+        message.body = '[Message Deleted]'
+        db.session.commit()
+
+    flash('Message deleted successfully!', 'success')
+    return redirect(url_for('main.inbox'))
