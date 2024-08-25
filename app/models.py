@@ -14,7 +14,7 @@ class User(UserMixin, db.Model):
     profile_picture = db.Column(db.String(150), nullable=True)
     products = db.relationship('Product', backref='author', lazy='dynamic')
     reviews = db.relationship('Review', backref='author', lazy='dynamic')
-    admin_profile = db.relationship('Admin', uselist=False, backref='user')
+    
     wishlist_entries = db.relationship('Wishlist', backref='user', lazy=True)
     received_messages = db.relationship('Message', foreign_keys='Message.receiver_id', backref='receiver', overlaps="sent_messages,received_messages")
     sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender', overlaps="received_messages,sent_messages")
@@ -59,12 +59,20 @@ class Product(db.Model):
     description = db.Column(db.String(1024))
     price = db.Column(db.Float)
     image = db.Column(db.String(150), nullable=True)
-    is_sold = db.Column(db.Boolean, default=False)  # New field
+    is_sold = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     reviews = db.relationship('Review', backref='product', lazy='dynamic')
+    orders = db.relationship('Order', backref='product', lazy='dynamic')
 
+    @property
+    def buyer(self):
+        order = Order.query.filter_by(product_id=self.id).first()
+        if order:
+            return User.query.get(order.user_id)
+        return None
+    
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     rating = db.Column(db.Integer, nullable=False)
@@ -78,7 +86,7 @@ class Order(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    product = db.relationship('Product', backref='orders')
+    
     user = db.relationship('User', backref='orders')
 
 class ProductImage(db.Model):
@@ -87,10 +95,6 @@ class ProductImage(db.Model):
     image_filename = db.Column(db.String(128))
 
     product = db.relationship('Product', backref='images')
-
-
-
-
 
 class Wishlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -104,6 +108,8 @@ class Admin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     is_superadmin = db.Column(db.Boolean, default=False)
+    
+    user = db.relationship('User', backref='admin_profile')
 
 class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)

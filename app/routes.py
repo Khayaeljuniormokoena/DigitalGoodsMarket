@@ -406,6 +406,13 @@ def user_profile():
 @admin_required
 def remove_product(id):
     product = Product.query.get_or_404(id)
+    
+    if product.is_sold:
+        buyer = product.buyer
+        if buyer:
+            flash(f'Product was purchased by {buyer.username}. It cannot be deleted.', 'warning')
+            return redirect(url_for('main.index'))
+    
     db.session.delete(product)
     db.session.commit()
     flash('Product has been removed!', 'success')
