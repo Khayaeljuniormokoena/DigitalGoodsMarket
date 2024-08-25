@@ -4,15 +4,16 @@
 
 {% block content %}
   <h1 class="my-4">Products 
-    <!-- Add this where you want to show the cart item count -->
+    <!-- Display the cart item count -->
     <span class="badge bg-primary">{{ cart_item_count }}</span>
   </h1>
+
   <div class="row">
     {% for product in products.items %}
     <div class="col-md-4 mb-4">
       <div class="card">
         {% if product.image %}
-          <img src="{{ url_for('static', filename='images/' + product.image) }}" class="card-img-top" alt="Product Image">
+          <img src="{{ url_for('static', filename='images/' + product.image) }}" class="card-img-top" alt="{{ product.title }}">
         {% else %}
           <img src="{{ url_for('static', filename='images/default.jpg') }}" class="card-img-top" alt="Default Image">
         {% endif %}
@@ -20,7 +21,14 @@
           <h5 class="card-title"><a href="{{ url_for('main.product', id=product.id) }}">{{ product.title }}</a></h5>
           <p class="card-text">{{ product.description }}</p>
           <p class="card-text">Price: ${{ product.price }}</p>
+          <p class="card-text">Category: {{ product.category.name }}</p>
           <a href="{{ url_for('main.product', id=product.id) }}" class="btn btn-primary">View Product</a>
+          
+          {% if product.author == current_user %}
+          <form action="{{ url_for('main.remove_product', id=product.id) }}" method="post" style="margin-top: 10px;">
+              <button type="submit" class="btn btn-danger">Delete</button>
+          </form>
+          {% endif %}
         </div>
       </div>
     </div>

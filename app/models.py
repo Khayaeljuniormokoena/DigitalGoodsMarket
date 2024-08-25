@@ -63,9 +63,12 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    file_path = db.Column(db.String(150), nullable=True)  # Field for storing file paths
+    file_type = db.Column(db.String(50), nullable=True)  # Field to store the type of file (e.g., 'ebook', 'plugin', 'instrumental')
+    
     reviews = db.relationship('Review', backref='product', lazy='dynamic')
     orders = db.relationship('Order', backref='product', lazy='dynamic')
-
+    
     @property
     def buyer(self):
         order = Order.query.filter_by(product_id=self.id).first()

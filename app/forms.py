@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import IntegerField, MultipleFileField, StringField, PasswordField, BooleanField, SubmitField, TextAreaField, FloatField, FileField
+from wtforms import DecimalField, IntegerField, MultipleFileField, SelectField, StringField, PasswordField, BooleanField, SubmitField, TextAreaField, FloatField, FileField
 from wtforms.validators import DataRequired, ValidationError, Email, EqualTo, Optional
 from wtforms.fields.simple import FileField
 from app.models import User
@@ -30,10 +30,11 @@ class RegistrationForm(FlaskForm):
 class ProductForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     description = TextAreaField('Description', validators=[DataRequired()])
-    price = FloatField('Price', validators=[DataRequired()])
+    price = DecimalField('Price', validators=[DataRequired()])
     category = StringField('Category', validators=[DataRequired()])
-    images = MultipleFileField('Product Images')
-    submit = SubmitField('Add Product')
+    images = FileField('Product Images')  # Image file upload
+    file = FileField('Product File')  # Digital product file upload
+    file_type = SelectField('File Type', choices=[('ebook', 'E-Book'), ('plugin', 'Plugin'), ('instrumental', 'Instrumental')])
 
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])

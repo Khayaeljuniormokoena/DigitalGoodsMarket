@@ -139,10 +139,19 @@ def add_product():
             price=form.price.data,
             category=category,
             author=current_user,
+            file_type=form.file_type.data,
         )
         db.session.add(product)
-        db.session.flush()  # Ensure the product ID is available before saving images
+        db.session.flush()
 
+        # Save product file if uploaded
+        if form.file.data and allowed_file(form.file.data.filename):
+            file_filename = secure_filename(form.file.data.filename)
+            file_path = os.path.join('app/static/files/', file_filename)
+            form.file.data.save(file_path)
+            product.file_path = file_filename
+
+        # Save images if uploaded
         for image in form.images.data:
             if image and allowed_file(image.filename):
                 filename = secure_filename(image.filename)
@@ -154,8 +163,6 @@ def add_product():
         flash('Your product is now live!')
         return redirect(url_for('main.index'))
     return render_template('add_product.html', title='Add Product', form=form)
-
-
 
 @bp.route('/search', methods=['GET', 'POST'])
 def search():
@@ -403,19 +410,14 @@ def user_profile():
 
 @bp.route('/remove_product/<int:id>', methods=['POST'])
 @login_required
-@admin_required
 def remove_product(id):
     product = Product.query.get_or_404(id)
-    
-    if product.is_sold:
-        buyer = product.buyer
-        if buyer:
-            flash(f'Product was purchased by {buyer.username}. It cannot be deleted.', 'warning')
-            return redirect(url_for('main.index'))
+    if product.author != current_user:
+        abort(403)  # Only allow the product author to delete the product
     
     db.session.delete(product)
     db.session.commit()
-    flash('Product has been removed!', 'success')
+    flash('Product deleted successfully!', 'success')
     return redirect(url_for('main.index'))
 
 @bp.route('/edit_message/<int:message_id>', methods=['PUT'])
