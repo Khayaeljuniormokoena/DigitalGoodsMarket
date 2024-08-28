@@ -32,7 +32,7 @@ class ProductForm(FlaskForm):
     description = TextAreaField('Description', validators=[DataRequired()])
     price = DecimalField('Price', validators=[DataRequired()])
     category = StringField('Category', validators=[DataRequired()])
-    images = FileField('Product Images')  # Image file upload
+    images = MultipleFileField('Product Images')  # Update to MultipleFileField
     file = FileField('Product File')  # Digital product file upload
     file_type = SelectField('File Type', choices=[('ebook', 'E-Book'), ('plugin', 'Plugin'), ('instrumental', 'Instrumental')])
 

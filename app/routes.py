@@ -29,17 +29,16 @@ def save_profile_picture(form_picture):
 @login_required
 def index():
     products = Product.query.order_by(Product.created_at.desc()).paginate(per_page=10)
-    print(f"Products: {products.items}")  # Debug statement
     cart = Cart.query.filter_by(user_id=current_user.id).first()
     cart_item_count = len(CartItem.query.filter_by(cart_id=cart.id).all()) if cart else 0
     
     wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
-    print(f"Wishlist Items: {wishlist_items}")  # Debug statement
-        # Calculate unread messages count
     unread_count = Message.query.filter_by(receiver_id=current_user.id, read=False).count()
     
+    # Fetch product images for the products
+    product_images = {product.id: ProductImage.query.filter_by(product_id=product.id).first() for product in products.items}
     
-    return render_template('home.html', products=products, cart_item_count=cart_item_count, wishlist_items=wishlist_items, unread_count=unread_count)
+    return render_template('home.html', products=products, cart_item_count=cart_item_count, wishlist_items=wishlist_items, unread_count=unread_count, product_images=product_images)
 
 @bp.before_request
 def before_request():
@@ -123,7 +122,8 @@ def product(id):
     
     is_uploader = product.author == current_user
     reviews = Review.query.filter_by(product_id=id).all()
-    return render_template('product.html', product=product, form=form, reviews=reviews, is_uploader=is_uploader)
+    product_images = ProductImage.query.filter_by(product_id=id).all()  # Fetch all images for the product
+    return render_template('product.html', product=product, form=form, reviews=reviews, is_uploader=is_uploader, product_images=product_images)
 
 @bp.route('/add_product', methods=['GET', 'POST'])
 @login_required
@@ -156,11 +156,17 @@ def add_product():
         # Save images if uploaded
         if form.images.data:
             for image in form.images.data:
-                if image and hasattr(image, 'filename') and allowed_file(image.filename):
+                if image and allowed_file(image.filename):
                     filename = secure_filename(image.filename)
-                    image.save(os.path.join('app/static/images/', filename))
+                    image_path = os.path.join('app/static/images/', filename)
+                    image.save(image_path)
                     product_image = ProductImage(product_id=product.id, image_filename=filename)
                     db.session.add(product_image)
+        else:
+            # Set default image if no image is uploaded
+            default_image = 'default.jpg'
+            product_image = ProductImage(product_id=product.id, image_filename=default_image)
+            db.session.add(product_image)
 
         db.session.commit()
         flash('Your product is now live!')
