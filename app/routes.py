@@ -10,6 +10,7 @@ from app.models import Cart, CartItem, Product, Wishlist, User, Review, Category
 from app.forms import LoginForm, MessageForm, RegistrationForm, ProductForm, EditProfileForm, ReviewForm, SearchForm
 from app.Decorator import admin_required
 from config import allowed_file
+from app.models import Category
 
 # Blueprint setup
 bp = Blueprint('main', __name__)
@@ -169,23 +170,41 @@ def add_product():
 @bp.route('/search', methods=['GET', 'POST'])
 def search():
     form = SearchForm()
-    query = form.query.data
-    min_price = form.min_price.data
-    max_price = form.max_price.data
+    query = request.args.get('query', '')
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
+    category_name = request.args.get('category', '')
+    file_type = request.args.get('file_type', '')
 
+    # Start building the query
     products_query = Product.query
 
+    # Filter by title
     if query:
         products_query = products_query.filter(Product.title.ilike(f'%{query}%'))
 
+    # Filter by price range
     if min_price is not None:
         products_query = products_query.filter(Product.price >= min_price)
-        
     if max_price is not None:
         products_query = products_query.filter(Product.price <= max_price)
 
+    # Filter by category
+    if category_name:
+        category = Category.query.filter_by(name=category_name).first()
+        if category:
+            products_query = products_query.filter(Product.category_id == category.id)
+
+    # Filter by file type
+    if file_type:
+        products_query = products_query.filter(Product.file_type.ilike(f'%{file_type}%'))
+
+    # Execute the query to get the products
     products = products_query.all()
-    return render_template('search.html', products=products, form=form)
+    categories = Category.query.all()  # Fetch all categories
+
+    # Pass categories to the template
+    return render_template('search.html', products=products, categories=categories, form=form)
 
 @bp.route('/buy_product/<int:id>', methods=['POST'])
 @login_required

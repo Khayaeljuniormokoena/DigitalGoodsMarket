@@ -1,29 +1,68 @@
 {% extends "base.html" %}
 
-{% block title %}Search Results{% endblock %}
+{% block title %}Search Products{% endblock %}
 
 {% block content %}
-  <h1>Search Results</h1>
-  {% if products %}
-  <div class="row">
-    {% for product in products %}
-    <div class="col-md-4 mb-4">
-      <div class="card">
-        {% if product.image %}
-          <img src="{{ url_for('static', filename='images/' + product.image) }}" class="card-img-top" alt="Product Image">
-        {% else %}
-          <img src="{{ url_for('static', filename='images/default-product.jpg') }}" class="card-img-top" alt="Default Product Image">
-        {% endif %}
-        <div class="card-body">
-          <h5 class="card-title"><a href="{{ url_for('main.product', id=product.id) }}">{{ product.title }}</a></h5>
-          <p class="card-text">{{ product.description }}</p>
-          <p class="card-text">Price: ${{ product.price }}</p>
-        </div>
-      </div>
+  <h1>Search Products</h1>
+
+  <!-- Search Form -->
+  <form method="GET" action="{{ url_for('main.search') }}" class="mb-4">
+    <div class="form-group">
+      <label for="query">Title:</label>
+      <input type="text" name="query" id="query" class="form-control" placeholder="Search products..." value="{{ request.args.get('query', '') }}">
     </div>
-    {% endfor %}
-  </div>
+    <div class="form-group">
+      <label for="min_price">Min Price:</label>
+      <input type="number" name="min_price" id="min_price" class="form-control" value="{{ request.args.get('min_price', '') }}" step="0.01" placeholder="Min Price">
+    </div>
+    <div class="form-group">
+      <label for="max_price">Max Price:</label>
+      <input type="number" name="max_price" id="max_price" class="form-control" value="{{ request.args.get('max_price', '') }}" step="0.01" placeholder="Max Price">
+    </div>
+    <div class="form-group">
+      <label for="category">Category:</label>
+      <select name="category" id="category" class="form-control">
+        <option value="">-- Select Category --</option>
+        {% for category in categories %}
+          <option value="{{ category.name }}" {% if request.args.get('category') == category.name %}selected{% endif %}>
+            {{ category.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="file_type">File Type:</label>
+      <input type="text" name="file_type" id="file_type" class="form-control" value="{{ request.args.get('file_type', '') }}" placeholder="File Type">
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+
+  <!-- Search Results -->
+  <h2>Search Results</h2>
+  {% if products %}
+    <div class="row">
+      {% for product in products %}
+        <div class="col-md-4 mb-4">
+          <div class="card">
+            {% if product.image %}
+              <img src="{{ url_for('static', filename='images/' + product.image) }}" class="card-img-top" alt="Product Image">
+            {% else %}
+              <img src="{{ url_for('static', filename='images/default-product.jpg') }}" class="card-img-top" alt="Default Product Image">
+            {% endif %}
+            <div class="card-body">
+              <h5 class="card-title">
+                <a href="{{ url_for('main.product', id=product.id) }}">{{ product.title }}</a>
+              </h5>
+              <p class="card-text">{{ product.description }}</p>
+              <p class="card-text">Price: ${{ product.price }}</p>
+              <p class="card-text">File Type: {{ product.file_type }}</p>
+              <p class="card-text">Category: {{ product.category.name if product.category else 'No Category' }}</p>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
-  <p>No products found matching your search criteria.</p>
+    <p>No products found matching your search criteria.</p>
   {% endif %}
 {% endblock %}

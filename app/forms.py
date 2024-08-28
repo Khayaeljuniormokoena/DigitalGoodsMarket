@@ -48,9 +48,11 @@ class ReviewForm(FlaskForm):
     submit = SubmitField('Submit Review')
 
 class SearchForm(FlaskForm):
-    query = StringField('Search', validators=[Optional()])
-    min_price = FloatField('Min Price', validators=[Optional()])
-    max_price = FloatField('Max Price', validators=[Optional()])
+    query = StringField('Search by Title', validators=[Optional()])
+    min_price = DecimalField('Min Price', validators=[Optional()])
+    max_price = DecimalField('Max Price', validators=[Optional()])
+    category = SelectField('Category', choices=[], coerce=str, validators=[Optional()])
+    file_type = StringField('File Type', validators=[Optional()])
     submit = SubmitField('Search')
 
 class MessageForm(FlaskForm):
