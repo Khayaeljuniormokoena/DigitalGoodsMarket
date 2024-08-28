@@ -1,0 +1,75 @@
+/* Basic styles for the inbox */
+.container {
+    max-width: 800px;
+    margin: auto;
+}
+
+.chat-list {
+    margin-top: 20px;
+}
+
+.chat-conversation {
+    margin-bottom: 20px;
+}
+
+.chat-header {
+    font-size: 1.25rem;
+    margin-bottom: 10px;
+}
+
+.chat-messages {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.sent {
+    background-color: #e1ffc7;
+    text-align: right;
+}
+
+.received {
+    background-color: #fff;
+    text-align: left;
+}
+
+.unread {
+    font-weight: bold;
+}
+
+.message-info {
+    font-size: 0.875rem;
+    color: #555;
+}
+
+.timestamp {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.message-body {
+    margin-top: 5px;
+}
+
+.message-actions {
+    margin-top: 10px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+}

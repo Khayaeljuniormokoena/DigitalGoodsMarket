@@ -3,8 +3,10 @@
 {% block title %}View Message{% endblock %}
 
 {% block content %}
-  <h1>Message from {{ message.sender.username }}</h1>
-  <p>{{ message.body }}</p>
-  <hr>
-  <a href="{{ url_for('main.reply_message', id=message.id) }}" class="btn btn-primary">Reply</a>
+<div class="container">
+    <h1>Message from {{ message.sender.username }}</h1>
+    <p class="message-body">{{ message.body }}</p>
+    <hr>
+    <a href="{{ url_for('main.reply_message', id=message.id) }}" class="btn btn-primary">Reply</a>
+</div>
 {% endblock %}

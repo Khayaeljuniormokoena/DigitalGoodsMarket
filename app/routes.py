@@ -268,13 +268,25 @@ def send_message():
 @bp.route('/inbox', methods=['GET', 'POST'])
 @login_required
 def inbox():
+    # Fetch messages for the current user
     messages = Message.query.filter(
-        (Message.receiver_id == current_user.id) & (Message.deleted_for_receiver == False) |
-        (Message.sender_id == current_user.id) & (Message.deleted_for_sender == False)
+        ((Message.receiver_id == current_user.id) & (Message.deleted_for_receiver == False)) |
+        ((Message.sender_id == current_user.id) & (Message.deleted_for_sender == False))
     ).order_by(Message.timestamp.asc()).all()
 
-    form = MessageForm()
+    # Group messages by the other participant
+    conversations = {}
+    for message in messages:
+        other_user_id = message.sender_id if message.sender_id != current_user.id else message.receiver_id
+        other_user = User.query.get(other_user_id)
+        
+        if other_user not in conversations:
+            conversations[other_user] = []
+        
+        conversations[other_user].append(message)
 
+    # Handle message sending
+    form = MessageForm()
     if form.validate_on_submit():
         recipient = User.query.filter_by(username=form.recipient.data).first()
         if recipient is None:
@@ -297,7 +309,7 @@ def inbox():
             message.read = True
             db.session.commit()
 
-    return render_template('inbox.html', title='Inbox', messages=messages, form=form)
+    return render_template('inbox.html', title='Inbox', conversations=conversations, form=form)
 
 
 
@@ -447,7 +459,7 @@ def remove_product(id):
     flash('Product deleted successfully!', 'success')
     return redirect(url_for('main.index'))
 
-@bp.route('/edit_message/<int:message_id>', methods=['PUT'])
+@bp.route('/edit_message/<int:message_id>', methods=['POST'])
 @login_required
 def edit_message(message_id):
     message = Message.query.get_or_404(message_id)
@@ -457,15 +469,16 @@ def edit_message(message_id):
         flash('You can only edit messages within 5 minutes of sending them.', 'danger')
         return redirect(url_for('main.inbox'))
 
-    form = MessageForm()
-    if form.validate_on_submit():
-        message.body = form.body.data
+    new_body = request.form.get('body')
+    if new_body:
+        message.body = new_body
         message.edited = True
+        message.edit_timestamp = datetime.utcnow()
         db.session.commit()
         flash('Message updated successfully!', 'success')
     return redirect(url_for('main.inbox'))
 
-@bp.route('/delete_message/<int:message_id>', methods=['DELETE'])
+@bp.route('/delete_message/<int:message_id>', methods=['POST'])
 @login_required
 def delete_message(message_id):
     message = Message.query.get_or_404(message_id)
@@ -477,6 +490,7 @@ def delete_message(message_id):
         db.session.delete(message)
     else:
         message.body = '[Message Deleted]'
+        message.deleted_for_sender = True
         db.session.commit()
 
     flash('Message deleted successfully!', 'success')
